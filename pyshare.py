@@ -11,23 +11,42 @@ import config
 
 character_pool = ascii_letters + digits
 
-def generate_filename(prefix, length):
-    return prefix + ''.join(choices(character_pool, k=length)) + '.png'
+
+def find_filename(prefix, length, ext, conn):
+    def generate_filename(prefix, length, ext):
+        return prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
+
+    filename = generate_filename(prefix, length, ext)
+    i = 0
+    while conn.exists(filename):
+        filename = generate_filename(prefix, length, ext)
+        i += 1
+        if i > 1000:
+            # using recursion here feels... questionable at best, but it's faster than using % every loop
+            find_filename(prefix, length + 1, ext, conn)
 
 
-filename = generate_filename(config.prefix, config.length)
+def upload_local_file(path: str, conn: Connection):
+    raise NotImplementedError('soon(tm)')
 
-with Connection(config.sftp_address, username=config.username, password=config.password) as conn:
-    with conn.cd(config.remote_directory):
-        # there's potential for an endless loop here...
-        while conn.exists(filename):
-            filename = generate_filename(config.prefix, config.length)
 
-        filepath = os.path.join(config.local_directory, filename)
+def upload_screenshot(filename: str, conn: Connection):
+    call(["escrotum", "{}".format(filename), "-s"])
+    conn.put(filename)
 
-        call(["escrotum", "{}".format(filepath), "-s"])
 
-        conn.put(filepath)
+def prepare_upload(mode='screenshot', ext=None) -> str:
+    if mode == 'screenshot' and ext == None:
+        ext = 'png'
+
+    with Connection(config.sftp_address, username=config.username, password=config.password) as conn:
+        with conn.cd(config.remote_directory):
+            filename = find_filename(config.prefix, config.length, ext, conn) + '.{}'.format(ext)
+
+            filepath = os.path.join(config.local_directory, filename)
+
+    return filepath
+
 
 link = config.link_template.format(filename)
 
