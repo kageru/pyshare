@@ -26,16 +26,16 @@ def find_filename(prefix, length, ext, conn):
             find_filename(prefix, length + 1, ext, conn)
 
 
-def upload_local_file(path: str, conn: Connection):
+def upload_local_file(path: str, conn: Connection) -> Exception:  # does this even return an exception? probably not. does it matter? definitely not
     raise NotImplementedError('soon(tm)')
 
 
-def upload_screenshot(filename: str, conn: Connection):
+def upload_screenshot(filename: str, conn: Connection) -> None:
     call(["escrotum", "{}".format(filename), "-s"])
     conn.put(filename)
 
 
-def prepare_upload(mode='screenshot', ext=None) -> str:
+def prepare_upload(mode='screenshot', ext=None) -> tuple:
     if mode == 'screenshot' and ext == None:
         ext = 'png'
 
@@ -43,23 +43,36 @@ def prepare_upload(mode='screenshot', ext=None) -> str:
         with conn.cd(config.remote_directory):
             filename = find_filename(config.prefix, config.length, ext, conn) + '.{}'.format(ext)
 
-            filepath = os.path.join(config.local_directory, filename)
+            fullpath = os.path.join(config.local_directory, filename)
 
-    return filepath
+    return fullpath, filename
 
 
-link = config.link_template.format(filename)
+def notify_user(url):
+    print(url)
+    # copy link to clipboard
+    # https://stackoverflow.com/questions/579687/how-do-i-copy-a-string-to-the-clipboard-on-windows-using-python#4203897
+    r = Tk()
+    r.clipboard_clear()
+    r.clipboard_append(url)
+    r.after(2000, sys.exit)
+    # also show a little button that does nothing.
+    # Well, it informs you that your link is ready, so that's something, I guess
+    rButton = Button(r, text=f"{url}", font=("Verdana", 12), bg="black", command=sys.exit)
+    rButton.pack()
+    r.geometry('400x50+700+500')
+    r.mainloop()
 
-# copy link to clipboard
-# https://stackoverflow.com/questions/579687/how-do-i-copy-a-string-to-the-clipboard-on-windows-using-python#4203897
-print(link)
-r = Tk()
-r.clipboard_clear()
-r.clipboard_append(link)
-r.after(2000, sys.exit)
-# also show a little button that does nothing.
-# Well, it informs you that your link is ready, so that's something, I guess
-rButton = Button(r, text=f"{link}", font=("Verdana", 12), bg="black", command=sys.exit)
-rButton.pack()
-r.geometry('400x50+700+500')
-r.mainloop()
+
+if __name__ == '__main__':
+    if len(sys.argv) != 1:
+        mode = sys.argv[1]
+        file = sys.argv[2]
+        ext = file.splitr('.', 1)[1]
+    else:
+        mode = 'screenshot'
+        ext = 'png'
+    fullpath, filename = prepare_upload(mode, ext)
+
+    url = config.url_template.format(filename)
+    notify_user(url)
