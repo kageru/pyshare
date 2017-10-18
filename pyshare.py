@@ -12,10 +12,10 @@ import config
 character_pool = ascii_letters + digits
 
 
-def find_filename(prefix, length, ext, conn):
-    def generate_filename(prefix, length, ext):
-        return prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
+def generate_filename(prefix, length, ext):
+    return prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
 
+def find_filename(prefix, length, ext, conn):
     filename = generate_filename(prefix, length, ext)
     i = 0
     while conn.exists(filename):
@@ -26,26 +26,35 @@ def find_filename(prefix, length, ext, conn):
             find_filename(prefix, length + 1, ext, conn)
 
 
-def upload_local_file(path: str, conn: Connection) -> Exception:  # does this even return an exception? probably not. does it matter? definitely not
+def upload_local_file(path: str,
+                      conn: Connection) -> Exception:  # does this even return an exception? probably not. does it matter? definitely not
     raise NotImplementedError('soon(tm)')
 
 
-def upload_screenshot(filename: str, conn: Connection) -> None:
+def take_screenshot(filename: str) -> None:
     call(["escrotum", "{}".format(filename), "-s"])
-    conn.put(filename)
 
 
-def prepare_upload(mode='screenshot', ext=None) -> tuple:
-    if mode == 'screenshot' and ext == None:
+def ftp_upload(mode='screenshot', ext=None) -> tuple:
+    if mode == 'screenshot' and ext is None:
         ext = 'png'
 
     with Connection(config.sftp_address, username=config.username, password=config.password) as conn:
         with conn.cd(config.remote_directory):
             filename = find_filename(config.prefix, config.length, ext, conn) + '.{}'.format(ext)
-
             fullpath = os.path.join(config.local_directory, filename)
 
+            take_screenshot(filename)
+
+            conn.put(filename)
     return fullpath, filename
+
+
+def curl_upload(filename):
+    if config.custom_curl_command is not None:
+        return call(config.custom_curl_command)
+    else:
+        return call(f'curl -k -F"file=@{filename}" -F"name={config.username}" -F"passwd={config.password}" {config.curl_target}')
 
 
 def notify_user(url):
@@ -66,13 +75,27 @@ def notify_user(url):
 
 if __name__ == '__main__':
     if len(sys.argv) != 1:
-        mode = sys.argv[1]
-        file = sys.argv[2]
-        ext = file.splitr('.', 1)[1]
+        mode = 'file'
+        # mode = sys.argv[1]
+        file = sys.argv[1]
     else:
         mode = 'screenshot'
         ext = 'png'
-    fullpath, filename = prepare_upload(mode, ext)
-
+    if config.uploader in ['ftp', 'sftp']:
+        if mode != 'screenshot' and '.' in file:
+            ext = '.' + file.rsplit('.', 1)[1]
+        # TODO: mode file for FTP
+        fullpath, filename = ftp_upload(mode, ext)
+    elif config.uploader == 'curl':
+        if mode=='screenshot':
+            filename = generate_filename(length=config.length, ext='.png')
+            fullpath = os.path.join(config.local_directory, filename)
+            take_screenshot(fullpath)
+        else:
+            fullpath = file
+        curl_upload(fullpath)
+    else:
+        print('Unknown mode')
+        sys.exit(-1)
     url = config.url_template.format(filename)
     notify_user(url)
