@@ -5,6 +5,7 @@ from flask import Flask, request
 from werkzeug.utils import secure_filename
 from hashlib import sha3_256
 from users import users
+import config
 
 app = Flask(__name__)
 
@@ -33,7 +34,7 @@ def receive_file() -> tuple:
             file = request.files.get('file')
             filename = secure_filename(file.filename)
             file.save(filename)
-            return filename, 201
+            return config.url_template.format(filename), 201
         else:
             return 'Wrong or no credentials', 403
     return 'you\'re doing this wrong', 418

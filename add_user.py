@@ -2,6 +2,9 @@
 # It only generates a string that you can copy-paste into users.py
 
 from pyshare_receiver import salthash
+from pyshare import character_pool
+from random import choices
+
 import sys
 
 
@@ -13,4 +16,7 @@ if __name__ == '__main__':
         ''')
         sys.exit(0)
     else:
-        print()
+        username, password = sys.argv[1:]
+        salt = choices(character_pool, k=10)
+        hash = salthash(password, salt)
+        print(f"    '{username}': ['{hash}', '{salt}'],")
