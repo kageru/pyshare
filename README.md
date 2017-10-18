@@ -1,8 +1,8 @@
 # pyshare
-A very simple python script that aims to replace the most basic functionalities (TL Note: the ones I used) of ShareX.
+A simple python script that aims to replace the most basic functionalities (TL Note: the ones I used) of ShareX.
 This wouldn't be necessary if ShareX had just been developed as a cross-platform project, but I digress.  
 Needless to say, this is being developed for and tested on Linux. If you're on Windows, just use ShareX.\
-Only (s)ftp uploads for now, but I might add simple curl commands (like used by 0x0) later on.
+~~Only (s)ftp uploads for now~~ I added simple curl commands (like used by 0x0), as well as a small server that can receive them.
 I should add that the focus will be on a self-hosted server. If you don't care about that, just `curl` 0x0.st or something.
 #### What works:
 - Taking area screenshots

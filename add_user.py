@@ -17,6 +17,6 @@ if __name__ == '__main__':
         sys.exit(0)
     else:
         username, password = sys.argv[1:]
-        salt = choices(character_pool, k=10)
+        salt = ''.join(choices(character_pool, k=10))
         hash = salthash(password, salt)
         print(f"    '{username}': ['{hash}', '{salt}'],")
