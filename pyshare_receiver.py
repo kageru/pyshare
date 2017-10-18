@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # this file can be run on a server to act as the endpoint of the script.
 # I mainly want to test whether this is faster than sftp
 
