@@ -67,4 +67,4 @@ def receive_file() -> tuple:
 
 
 if __name__ == "__main__":
-    app.run(ssl_context='adhoc')
+    app.run(ssl_context='adhoc', port=config.remote_port)
