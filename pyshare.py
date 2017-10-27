@@ -10,9 +10,18 @@ from tkinter import Tk, Button
 from string import ascii_letters, digits
 from random import choices
 import config
+from argparse import ArgumentParser
 
 character_pool = ascii_letters + digits
 tk = Tk()
+
+
+def parse_arguments():
+    parser = ArgumentParser()
+    parser.add_argument('-m', '--mode', type=str, nargs='?',
+                        help="Specify the mode. Can be 'screenshot' to open a screencap tool and upload the image or 'text' to perform an operation on the clipboard contents. Implicit if --file is specified.")
+    parser.add_argument('-f', '--files', type=str, nargs='*', help='List of files to be uploaded')
+    return parser.parse_args()
 
 
 def generate_filename(length, ext, prefix=''):
@@ -99,18 +108,13 @@ def upload_text(text):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 1:
-        mode = 'file'
-        # mode = sys.argv[1]
-        file = sys.argv[1]
-    else:
-        mode = 'screenshot'
+    args = parse_arguments()
+    if args.mode == 'screenshot':
         ext = 'png'
-    if mode == 'screenshot':
-        pass
-    elif mode == 'file':
-        pass
-    elif mode == 'text':
+    elif args.files is not None:
+        for file in args.files:
+            upload_local_file(file)
+    elif args.mode == 'text':
         text = get_clipboard()
         if re.match(r'https?://', text):
             mirror_file(text)
