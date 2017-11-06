@@ -28,7 +28,7 @@ def generate_filename(length, ext, prefix=''):
     return prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
 
 
-def find_filename(prefix, length, ext, conn):
+def find_valid_filename(prefix, length, ext, conn):
     filename = generate_filename(prefix, length, ext)
     i = 0
     while conn.exists(filename):
@@ -36,30 +36,36 @@ def find_filename(prefix, length, ext, conn):
         i += 1
         if i > 1000:
             # completely, definitely, totally justified recursion... yay?
-            find_filename(prefix, length + 1, ext, conn)
+            find_valid_filename(prefix, length + 1, ext, conn)
 
 
-def upload_local_file(path: str, conn: Connection) -> Exception:
-    # does this even return an exception? probably not. does it matter? definitely not
-    raise NotImplementedError('soon(tm)')
+def upload_local_file(path: str) -> str:
+    filename = ftp_upload(mode='file', sourcefile=path)[1]
+    return config.url_template.format(filename)
 
 
 def take_screenshot(filename: str) -> None:
     call(["escrotum", filename, "-s"])
 
 
-def ftp_upload(mode='screenshot', ext=None) -> tuple:
-    if mode == 'screenshot' and ext is None:
-        ext = 'png'
+def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
+    if ext is None:
+        if mode == 'screenshot':
+            ext = 'png'
+        else:
+            ext = sourcefile.rsplit('.', 1)[1]
 
     with Connection(config.sftp_address, username=config.username, password=config.password) as conn:
         with conn.cd(config.remote_directory):
-            filename = find_filename(config.prefix, config.length, ext, conn) + '.{}'.format(ext)
+            filename = find_valid_filename(config.prefix, config.length, ext, conn) + '.{}'.format(ext)
             fullpath = os.path.join(config.local_directory, filename)
 
-            take_screenshot(filename)
+            if mode == 'screenshot':
+                take_screenshot(filename)
+                conn.put(filename)
+            elif mode == 'file':
+                conn.put(sourcefile, filename)
 
-            conn.put(filename)
     return fullpath, filename
 
 
@@ -93,7 +99,7 @@ def notify_user(url):
 def mirror_file(text):
     os.chdir(config.local_directory)
     call(['wget', text])
-    filename = text.rsplit('/')[-1]
+    filename = text.rsplit('/', 1)[1]
     url = upload_local_file(os.path.join(config.local_directory, filename))
     os.remove(os.path.join(config.local_directory, filename))
     set_clipboard(url)
@@ -104,7 +110,10 @@ def upload_text(text):
     filename = generate_filename(config.length, 'txt')
     with open(os.path.join(config.local_directory, filename), 'w') as file:
         file.write(text)
-    upload_local_file(os.path.join(config.local_directory, filename))
+    url = upload_local_file(os.path.join(config.local_directory, filename))
+    os.remove(os.path.join(config.local_directory, filename))
+    set_clipboard(url)
+    notify_user(url)
 
 
 if __name__ == '__main__':
