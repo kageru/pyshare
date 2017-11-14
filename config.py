@@ -1,10 +1,12 @@
 # Can be 'curl' or 'sftp'
-uploader = 'curl'
+uploader = 'sftp'
 
 # (S)FTP credentials, only if you want to use SFTP for uploads
-sftp_address = 'your_domain.com'
-username = 'your_ftp_user'
-password = 'your_ftp_password'
+# Set all to None that you don’t need
+sftp_address = ''
+username = None
+password = None
+private_key = None
 
 # curl parameters, if you're using pyshare_receivere
 curl_target = 'your_domain.com:5000'

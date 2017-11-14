@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 
-import sys
-from subprocess import call
-import os
-
-import re
-from pysftp import Connection
-from tkinter import Tk, Button
 from string import ascii_letters, digits
-from random import choices
-import config
 from argparse import ArgumentParser
+from pysftp import Connection
+from subprocess import call
+from random import choices
+import pyperclip
+import config
+import sys
+import os
+import re
 
 character_pool = ascii_letters + digits
-tk = Tk()
 
 
 def parse_arguments():
@@ -55,16 +53,18 @@ def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
         else:
             ext = sourcefile.rsplit('.', 1)[1]
 
-    with Connection(config.sftp_address, username=config.username, password=config.password) as conn:
-        with conn.cd(config.remote_directory):
-            filename = find_valid_filename(config.prefix, config.length, ext, conn) + '.{}'.format(ext)
-            fullpath = os.path.join(config.local_directory, filename)
+    with Connection(config.sftp_address, username=config.username, password=config.password,
+            private_key=config.private_key) as conn:
+        conn.chdir(config.remote_directory)
+        
+        filename = find_valid_filename(config.prefix, config.length, ext, conn) + '.{}'.format(ext)
+        fullpath = os.path.join(config.local_directory, filename)
 
-            if mode == 'screenshot':
-                take_screenshot(filename)
-                conn.put(filename)
-            elif mode == 'file':
-                conn.put(sourcefile, filename)
+        if mode == 'screenshot':
+            take_screenshot(filename)
+            conn.put(filename)
+        elif mode == 'file':
+            conn.put(sourcefile, filename)
 
     return fullpath, filename
 
@@ -77,23 +77,10 @@ def curl_upload(filename):
             f'curl -k -F"file=@{filename}" -F"name={config.username}" -F"passwd={config.password}" {config.curl_target}')
 
 
-def set_clipboard(text):
-    tk.clipboard_clear()
-    tk.clipboard_append(text)
-
-
-def get_clipboard():
-    result = tk.selection_get(selection="CLIPBOARD")
-
 
 def notify_user(url):
     print(url)
-    # also show a little button that does nothing.
-    # Well, it informs you that your link is ready, so that's something, I guess
-    rButton = Button(tk, text=f"{url}", font=("Verdana", 12), bg="black", command=sys.exit)
-    rButton.pack()
-    tk.geometry('400x50+700+500')
-    tk.mainloop()
+    call(['notify-send', url])
 
 
 def mirror_file(text):
@@ -102,7 +89,7 @@ def mirror_file(text):
     filename = text.rsplit('/', 1)[1]
     url = upload_local_file(os.path.join(config.local_directory, filename))
     os.remove(os.path.join(config.local_directory, filename))
-    set_clipboard(url)
+    pyperclip.copy(url)
     notify_user(url)
 
 
@@ -112,7 +99,7 @@ def upload_text(text):
         file.write(text)
     url = upload_local_file(os.path.join(config.local_directory, filename))
     os.remove(os.path.join(config.local_directory, filename))
-    set_clipboard(url)
+    pyperclip.copy(url)
     notify_user(url)
 
 
@@ -124,7 +111,7 @@ if __name__ == '__main__':
         for file in args.files:
             upload_local_file(file)
     elif args.mode == 'text':
-        text = get_clipboard()
+        text = pyperclip.paste()
         if re.match(r'https?://', text):
             mirror_file(text)
         elif os.path.isfile(text):
