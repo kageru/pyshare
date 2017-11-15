@@ -42,11 +42,19 @@ def upload_local_file(path: str) -> str:
     return config.url_template.format(filename)
 
 
-def take_screenshot(filename: str) -> None:
-    call(["escrotum", filename, "-s"])
+def take_screenshot() -> None:
+    tmppath = os.path.join(config.local_directory, 'tmp')
+    tmpdir = os.listdir(tmppath)
+    for f in tmpdir:
+        os.remove(os.path.join(tmppath, f))
+    # you can also use programs like escrotum here, but i3-scrot was much faster for me
+    call(['i3-scrot', '-s'])
+    file = os.path.join(config.local_directory, 'tmp', os.listdir(tmppath)[0])
+    ftp_upload(ext='png', sourcefile=file)
+    os.remove(file)
 
 
-def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
+def ftp_upload(mode='file', ext=None, sourcefile=None) -> tuple:
     if ext is None:
         # TODO files without extension
         exts = {
@@ -62,10 +70,7 @@ def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
         filename = find_valid_filename(prefix=config.prefix, length=config.length, ext=ext, conn=conn)
         fullpath = os.path.join(config.local_directory, filename)
 
-        if mode == 'screenshot':
-            take_screenshot(fullpath)
-            conn.put(fullpath)
-        elif mode == 'file':
+        if mode == 'file':
             conn.put(sourcefile, filename)
         
         notify_user(config.url_template.format(filename))
@@ -126,7 +131,7 @@ if __name__ == '__main__':
         elif args.mode == 'text':
             parse_clipboard(args)
         else:
-            ftp_upload(mode='screenshot')
+            take_screenshot()
     """              
     elif args.files is not None:
        
