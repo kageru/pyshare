@@ -6,7 +6,7 @@ from pysftp import Connection
 from subprocess import call
 from random import choices
 import pyperclip
-import config as config
+import config
 import sys
 import os
 import re
@@ -48,6 +48,7 @@ def take_screenshot(filename: str) -> None:
 
 def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
     if ext is None:
+        # TODO files without extension
         exts = {
             'screenshot': 'png',
             'text': 'txt',
@@ -64,9 +65,10 @@ def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
         if mode == 'screenshot':
             take_screenshot(fullpath)
             conn.put(fullpath)
-            notify_user(config.url_template.format(filename))
         elif mode == 'file':
             conn.put(sourcefile, filename)
+        
+        notify_user(config.url_template.format(filename))
 
     return fullpath, filename
 

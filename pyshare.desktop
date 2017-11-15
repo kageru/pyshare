@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Action
+Name=Upload with pyshare
+Profiles=profile-zero;
+
+[X-Action-Profile profile-zero]
+Exec=/home/kageru/pyshare/pyshare.py -f %f
+Name=Default profile
