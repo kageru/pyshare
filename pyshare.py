@@ -6,7 +6,7 @@ from pysftp import Connection
 from subprocess import call
 from random import choices
 import pyperclip
-import config2 as config
+import config as config
 import sys
 import os
 import re
@@ -48,10 +48,11 @@ def take_screenshot(filename: str) -> None:
 
 def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
     if ext is None:
-        ext = {
+        exts = {
             'screenshot': 'png',
             'text': 'txt',
-            }.get(mode, sourcefile.rsplit('.', 1)[1])
+            }
+        ext = exts.get(mode, mode not in exts and sourcefile.split('.')[-1])  # Only do the split if necessary
 
     with Connection(config.sftp_address, username=config.username, password=config.password,
             private_key=config.private_key) as conn:
@@ -61,8 +62,9 @@ def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
         fullpath = os.path.join(config.local_directory, filename)
 
         if mode == 'screenshot':
-            take_screenshot(filename)
-            conn.put(filename)
+            take_screenshot(fullpath)
+            conn.put(fullpath)
+            notify_user(config.url_template.format(filename))
         elif mode == 'file':
             conn.put(sourcefile, filename)
 
@@ -80,6 +82,7 @@ def curl_upload(filename):
 
 def notify_user(url):
     print(url)
+    pyperclip.copy(url)
     call(['notify-send', url])
 
 
@@ -99,7 +102,6 @@ def mirror_file(text):
     filename = text.rsplit('/', 1)[1]
     url = upload_local_file(os.path.join(config.local_directory, filename))
     os.remove(os.path.join(config.local_directory, filename))
-    pyperclip.copy(url)
     notify_user(url)
 
 
@@ -108,8 +110,7 @@ def upload_text(text):
     with open(os.path.join(config.local_directory, filename), 'w') as file:
         file.write(text)
     url = upload_local_file(os.path.join(config.local_directory, filename))
-    #os.remove(os.path.join(config.local_directory, filename))
-    pyperclip.copy(url)
+    os.remove(os.path.join(config.local_directory, filename))
     notify_user(url)
 
 
@@ -123,7 +124,7 @@ if __name__ == '__main__':
         elif args.mode == 'text':
             parse_clipboard(args)
         else:
-            ftp_upload(mode=args.mode)
+            ftp_upload(mode='screenshot')
     """              
     elif args.files is not None:
        
