@@ -13,11 +13,11 @@ I should add that the focus will be on a self-hosted server. If you don't care a
 - Mirroring url contents on the remote server
 
 ### Dependencies
-`pysftp` which can be installed via pip:
+`pysftp` and `pyperclip` which can be installed via pip:
 ```
-$ pip install pysftp
+$ pip install pysftp pyperclip
 ```
-`escrotum` and `notify-send` which should be available in your favorite package manager 
+And `escrotum` and `notify-send` which should be available in your favorite package manager 
 (or pre-installed, depending on your distribution and desktop environment).
 
 ### Usage
