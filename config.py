@@ -11,12 +11,12 @@ private_key_pass = None
 
 # This should contain a complete curl command with a {} to insert the filename.
 # Example: 'curl -F"file=@{}" https://0x0.st'
-custom_curl_command = None
+curl_command = None
 
 # This is where the screenshots are saved locally
 local_directory = '/home/kageru/pyshare/'
 
-# Directory on the ftp server where you want the screenshots to be sent to
+# Directory on the ftp server where you want the screenshots to be sent
 remote_directory = '/usr/share/nginx/html/pyshare/'
 # Template for the link that the script will generate. {} is the filename
 url_template = 'https://your_domain.com/pyshare/{}'
