@@ -7,14 +7,9 @@ sftp_address = ''
 username = None
 password = None
 private_key = None
-
-# curl parameters, if you're using pyshare_receivere
-curl_target = 'your_domain.com:5000'
-curl_user = 'user1'
-curl_password = 'password'
+private_key_pass = None
 
 # This should contain a complete curl command with a {} to insert the filename.
-# Setting this to anything but None will result in the other curl parameters to be ignored
 # Example: 'curl -F"file=@{}" https://0x0.st'
 custom_curl_command = None
 
