@@ -3,7 +3,8 @@ uploader = 'sftp'
 
 # (S)FTP credentials, only if you want to use SFTP for uploads
 # Set all to None that you don’t need
-sftp_address = ''
+sftp_address = 'your_domain.com'
+sftp_port = 22
 username = None
 password = None
 private_key = None
