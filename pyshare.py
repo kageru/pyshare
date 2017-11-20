@@ -6,20 +6,12 @@ from pysftp import Connection
 from subprocess import call
 from random import choices
 import pyperclip
-import config as config
+import config
 import sys
 import os
 import re
 
 character_pool = ascii_letters + digits
-
-
-def parse_arguments():
-    parser = ArgumentParser()
-    parser.add_argument('-m', '--mode', type=str, nargs='?',
-                        help="Specify the mode. Can be 'screenshot' to open a screencap tool and upload the image or 'text' to perform an operation on the clipboard contents. Implicit if --file is specified.")
-    parser.add_argument('-f', '--files', type=str, nargs='*', help='List of files to be uploaded')
-    return parser.parse_args()
 
 
 def generate_filename(length, ext, prefix=''):
@@ -38,16 +30,28 @@ def find_valid_filename(prefix, length, ext, conn):
     return filename
 
 def upload_local_file(path: str) -> str:
-    filename = ftp_upload(mode='file', sourcefile=path)[1]
-    return config.url_template.format(filename)
+    if config.uploader in ['ftp', 'sftp']:
+        filename = ftp_upload(path)[1]
+        return config.url_template.format(filename)
+    else:
+        return curl_upload(path)
 
 
-def take_screenshot(filename: str) -> None:
-    call(["escrotum", filename, "-s"])
+def take_screenshot() -> None:
+    tmppath = os.path.join(config.local_directory, 'tmp')
+    tmpdir = os.listdir(tmppath)
+    for f in tmpdir:
+        os.remove(os.path.join(tmppath, f))
+    # you can also use programs like escrotum here, but i3-scrot was much faster for me
+    call(['i3-scrot', '-s'])
+    file = os.path.join(config.local_directory, 'tmp', os.listdir(tmppath)[0])
+    ftp_upload(ext='png', sourcefile=file)
+    os.remove(file)
 
 
-def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
+def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
     if ext is None:
+        # TODO files without extension
         exts = {
             'screenshot': 'png',
             'text': 'txt',
@@ -55,29 +59,22 @@ def ftp_upload(mode='screenshot', ext=None, sourcefile=None) -> tuple:
         ext = exts.get(mode, mode not in exts and sourcefile.split('.')[-1])  # Only do the split if necessary
 
     with Connection(config.sftp_address, username=config.username, password=config.password,
-            private_key=config.private_key) as conn:
+            private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
         conn.chdir(config.remote_directory)
         
         filename = find_valid_filename(prefix=config.prefix, length=config.length, ext=ext, conn=conn)
         fullpath = os.path.join(config.local_directory, filename)
 
-        if mode == 'screenshot':
-            take_screenshot(fullpath)
-            conn.put(fullpath)
-            notify_user(config.url_template.format(filename))
-        elif mode == 'file':
+        if mode == 'file':
             conn.put(sourcefile, filename)
+        
+        notify_user(config.url_template.format(filename))
 
     return fullpath, filename
 
 
 def curl_upload(filename):
-    if config.custom_curl_command is not None:
-        return call(config.custom_curl_command)
-    else:
-        return call(
-            f'curl -k -F"file=@{filename}" -F"name={config.username}" -F"passwd={config.password}" {config.curl_target}')
-
+    return call(config.custom_curl_command)
 
 
 def notify_user(url):
@@ -115,8 +112,13 @@ def upload_text(text):
 
 
 if __name__ == '__main__':
-    args = parse_arguments()
+    if len(sys.argv) == 1:    
+        take_screenshot()
+    else:
+        for text in sys.argv[1:]:
+            parse_clipboard(text)
     
+    """
     if config.uploader in ['ftp', 'sftp']:
         if args.files is not None:
             for file in args.files:
@@ -124,8 +126,8 @@ if __name__ == '__main__':
         elif args.mode == 'text':
             parse_clipboard(args)
         else:
-            ftp_upload(mode='screenshot')
-    """              
+            take_screenshot()
+                  
     elif args.files is not None:
        
     if config.uploader in ['ftp', 'sftp']:
