@@ -13,6 +13,13 @@ import re
 
 character_pool = ascii_letters + digits
 
+def parse_arguments():
+    parser = ArgumentParser()
+    parser.add_argument('-m' '--mode', type=str,
+            help='Sets the input mode. Allowed values are "screenshot" and "clipboard". Implicit it file(s) are set.')
+    parser.add_argument('-f', '--files', type=str, nargs='*', help='List of files to be uploaded')
+    return parser.parse_args()
+
 
 def generate_filename(length, ext, prefix=''):
     return prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
@@ -83,7 +90,7 @@ def notify_user(url):
     call(['notify-send', url])
 
 
-def parse_clipboard(args):
+def parse_text(args):
         text = pyperclip.paste()
         if re.match(r'https?://', text):
             mirror_file(text)
@@ -112,11 +119,14 @@ def upload_text(text):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:    
+    args = parse_arguments()
+    if args.mode == 'clipboard':
+        parse_text(pyperclip.paste())
+    elif args.mode == 'screenshot'
         take_screenshot()
     else:
-        for text in sys.argv[1:]:
-            parse_clipboard(text)
+        for file in args.files:
+            upload_local_file(file)
     
     """
     if config.uploader in ['ftp', 'sftp']:
