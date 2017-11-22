@@ -46,12 +46,19 @@ def upload_local_file(path: str) -> str:
 
 def take_screenshot() -> None:
     tmppath = os.path.join(config.local_directory, 'tmp')
-    tmpdir = os.listdir(tmppath)
-    for f in tmpdir:
-        os.remove(os.path.join(tmppath, f))
-    # you can also use programs like escrotum here, but i3-scrot was much faster for me
-    call(['i3-scrot', '-s'])
-    file = os.path.join(config.local_directory, 'tmp', os.listdir(tmppath)[0])
+    if not os.path.isdir(tmppath):
+        os.mkdir(tmppath)
+    else:
+        tmpdir = os.listdir(tmppath)
+        for f in tmpdir:
+            os.remove(os.path.join(tmppath, f))
+    if config.use_i3scrot:
+        call(['i3-scrot', '-s'])
+        file = os.path.join(tmppath, os.listdir(tmppath)[0])
+    else:
+        tempname = generate_filename(3, 'png')
+        call(['escrotum', '-s', tempname])
+        file = os.path.join(tmppath, tempname)
     ftp_upload(ext='png', sourcefile=file)
     os.remove(file)
 
