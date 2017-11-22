@@ -34,6 +34,12 @@ You can also use the script to upload local files, mirror websites, or share you
 ```
 $ python3 pyshare -m text
 ```
-This is automatically  choose an action based on the contents of your clipboard. Links will be downloaded and mirrored, local paths will be uploaded, and other strings will be uploaded as text files to the remote host.  
+This will automatically choose an action based on the contents of your clipboard. Links will be downloaded and mirrored, local paths will be uploaded, and other strings will be uploaded as text files to the remote host.  
+Afterwards, the link is automatically copied to clipboard.  
 
-Afterwards, the link is automatically copied to clipboard.
+To upload one or multiple files, just list them like this:
+```
+$ python3 pyshare -f file1 file2 file3
+```
+You will then see a list of all URLs in your terminal. The links will also appear in a notification, and they will be copied to the clipboard as soon as the upload is completed, however, this is probably not very useful because they will be overwritten by the next file’s URL soon thereafter.
+
