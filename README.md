@@ -2,22 +2,23 @@
 A simple python script that aims to replace the most basic functionalities (TL Note: the ones I used) of ShareX.
 This wouldn't be necessary if ShareX had just been developed as a cross-platform project, but I digress.  
 Needless to say, this is being developed for and tested on Linux. If you're on Windows, just use ShareX.\
-~~Only (s)ftp uploads for now~~ I added simple curl commands (like used by 0x0), as well as a small server that can receive them.
-I should add that the focus will be on a self-hosted server. If you don't care about that, just `curl` 0x0.st or something.
+~~Only (s)ftp uploads for now~~ I added an option for simple curl commands (like used by 0x0).
 #### What works:
 - Taking area screenshots
-- Uploading screenshots to (s)ftp
+- Uploading screenshots to (s)ftp or to POST APIs via curl
+- Uploading files
+- Mirroring URLs
 - Generating a link from that and putting it into the clipboard
 #### What's planned
-- Local file upload
-- Mirroring url contents on the remote server
+- polish
+- whatever stupid idea I will come up with in the future
 
 ### Dependencies
-`pysftp` and `pyperclip` which can be installed via pip:
+`pysftp`, `pyperclip`, and `PIL` which can be installed via pip:
 ```
-$ pip install pysftp pyperclip
+$ pip install pysftp pyperclip pillow
 ```
-And `escrotum` and `notify-send` which should be available in your favorite package manager 
+as well as `escrotum` or `i3-scrot` (if you’re using i3wm) and `notify-send` which should be available in your favorite package manager 
 (or pre-installed, depending on your distribution and desktop environment).
 
 ### Usage
