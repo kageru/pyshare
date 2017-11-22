@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from pysftp import Connection
 from subprocess import call
 from random import choices
+from PIL import Image
 import pyperclip
 import config
 import sys
@@ -91,15 +92,23 @@ def curl_upload(filename):
     return call(config.custom_curl_command)
 
 
-def notify_user(url):
+def notify_user(url, image=None):
     print(url)
     pyperclip.copy(url)
-    call(['notify-send', url])
+    if image:
+        img = Image.open(image)
+        img.thumbnail((384, 384), Image.ANTIALIAS)
+        thumbnail = os.path.join(config.local_directory, 'thumb.jpg')
+        img.save(thumbnail)
+        call(['notify-send', '-a pyshare', url, f'-i {thumbnail}', '-t 3000'])
+        os.remove(thumbnail)
+    else:
+        call(['notify-send', '-a pyshare', url, '-t 3000'])
 
 
 def parse_text(args):
         text = pyperclip.paste()
-        if re.match(r'https?://', text):
+        if re.match(r'(https?|s?ftp)://', text):
             mirror_file(text)
         elif os.path.isfile(text):
             upload_local_file(text)
