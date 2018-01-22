@@ -148,7 +148,7 @@ if __name__ == '__main__':
             args.mode = 'screenshot'
     if args.mode == 'screenshot':
         take_screenshot()
-    elif args.mode == 'clipboard':
+    elif args.mode in ('clipboard', 'text', 'b'):
         parse_text(pyperclip.paste())
     else:
         for file in args.files:
