@@ -17,9 +17,9 @@ character_pool = ascii_letters + digits
 
 def parse_arguments():
     parser = ArgumentParser()
-    parser.add_argument('-m' '--mode', type=str, dest='mode', default='screenshot',
+    parser.add_argument('-m' '--mode', type=str, dest='mode', default=None,
                         help='Sets the input mode. Allowed values are "screenshot" and "clipboard". Implicit it file(s) are set.')
-    parser.add_argument('-f', '--files', type=str, nargs='*', dest='files', help='List of files to be uploaded')
+    parser.add_argument('-f', '--files', type=str, nargs='*', dest='files', help='List of files to be uploaded', default=None)
     return parser.parse_args()
 
 
@@ -41,7 +41,7 @@ def find_valid_filename(prefix, length, ext, conn):
 
 def upload_local_file(path: str) -> str:
     if config.uploader in ['ftp', 'sftp']:
-        filename = ftp_upload(path)[1]
+        filename = ftp_upload(path, mode='file')[1]
         return config.url_template.format(filename)
     else:
         return curl_upload(path)
@@ -50,7 +50,7 @@ def upload_local_file(path: str) -> str:
 def take_screenshot() -> None:
     tempname = generate_filename(config.length, 'png')
     file = os.path.join(config.local_directory, tempname)
-    call(['maim', '-s', file])
+    call(['maim', '-sk', file])
     ftp_upload(ext='png', sourcefile=file, mode='screenshot')
     if not config.keep_local_copies:
         os.remove(file)
@@ -72,11 +72,11 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
     with Connection(config.sftp_address, username=config.username, password=config.password,
                     private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
         conn.chdir(config.remote_directory)
-        os.chdir(config.local_directory)
 
         cur_name = sourcefile.split('/')[-1]
         filename = cur_name
         if mode == 'screenshot':
+            os.chdir(config.local_directory)
             if conn.exists(cur_name):
                 filename = find_valid_filename(prefix=config.prefix, length=config.length, ext=ext, conn=conn)
             conn.put(filename, filename)
@@ -141,6 +141,11 @@ def upload_text(text):
 
 if __name__ == '__main__':
     args = parse_arguments()
+    if args.mode is None:
+        if args.files is not None:
+            args.mode = 'files'
+        else:
+            args.mode = 'screenshot'
     if args.mode == 'screenshot':
         take_screenshot()
     elif args.mode == 'clipboard':
