@@ -18,7 +18,7 @@ Needless to say, this is being developed for and tested on Linux. If you're on W
 ```
 $ pip install pysftp pyperclip pillow
 ```
-as well as `escrotum` or `i3-scrot` (if you’re using i3wm) and `notify-send` which should be available in your favorite package manager 
+as well as `maim` (https://github.com/naelstrof/maim) and `notify-send` which should be available in your favorite package manager
 (or pre-installed, depending on your distribution and desktop environment).
 
 ### Usage

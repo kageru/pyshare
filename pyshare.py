@@ -14,11 +14,12 @@ import re
 
 character_pool = ascii_letters + digits
 
+
 def parse_arguments():
     parser = ArgumentParser()
-    parser.add_argument('-m' '--mode', type=str,
-            help='Sets the input mode. Allowed values are "screenshot" and "clipboard". Implicit it file(s) are set.')
-    parser.add_argument('-f', '--files', type=str, nargs='*', help='List of files to be uploaded')
+    parser.add_argument('-m' '--mode', type=str, dest='mode', default='screenshot',
+                        help='Sets the input mode. Allowed values are "screenshot" and "clipboard". Implicit it file(s) are set.')
+    parser.add_argument('-f', '--files', type=str, nargs='*', dest='files', help='List of files to be uploaded')
     return parser.parse_args()
 
 
@@ -37,6 +38,7 @@ def find_valid_filename(prefix, length, ext, conn):
             return find_valid_filename(prefix, length + 1, ext, conn)
     return filename
 
+
 def upload_local_file(path: str) -> str:
     if config.uploader in ['ftp', 'sftp']:
         filename = ftp_upload(path)[1]
@@ -46,22 +48,12 @@ def upload_local_file(path: str) -> str:
 
 
 def take_screenshot() -> None:
-    tmppath = os.path.join(config.local_directory, 'tmp')
-    if not os.path.isdir(tmppath):
-        os.mkdir(tmppath)
-    else:
-        tmpdir = os.listdir(tmppath)
-        for f in tmpdir:
-            os.remove(os.path.join(tmppath, f))
-    if config.use_i3scrot:
-        call(['i3-scrot', '-s'])
-        file = os.path.join(tmppath, os.listdir(tmppath)[0])
-    else:
-        tempname = generate_filename(3, 'png')
-        call(['escrotum', '-s', tempname])
-        file = os.path.join(tmppath, tempname)
-    ftp_upload(ext='png', sourcefile=file)
-    os.remove(file)
+    tempname = generate_filename(config.length, 'png')
+    file = os.path.join(config.local_directory, tempname)
+    call(['maim', '-s', file])
+    ftp_upload(ext='png', sourcefile=file, mode='screenshot')
+    if not config.keep_local_copies:
+        os.remove(file)
 
 
 def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
@@ -70,19 +62,32 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
         exts = {
             'screenshot': 'png',
             'text': 'txt',
-            }
-        ext = exts.get(mode, mode not in exts and sourcefile.split('.')[-1])  # Only do the split if necessary
+        }
+        if re.search('\.tar\.\w{1,4}]', sourcefile):
+            # properly handle .tar.something files
+            ext = sourcefile.split('.')[-2:]
+        else:
+            ext = exts.get(mode, mode not in exts and sourcefile.split('.')[-1])  # Only do the split if necessary
 
     with Connection(config.sftp_address, username=config.username, password=config.password,
-            private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
+                    private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
         conn.chdir(config.remote_directory)
-        
-        filename = find_valid_filename(prefix=config.prefix, length=config.length, ext=ext, conn=conn)
+        os.chdir(config.local_directory)
+
+        cur_name = sourcefile.split('/')[-1]
+        filename = cur_name
+        if mode == 'screenshot':
+            if conn.exists(cur_name):
+                filename = find_valid_filename(prefix=config.prefix, length=config.length, ext=ext, conn=conn)
+            conn.put(filename, filename)
+        else:
+            filename = find_valid_filename(prefix=config.prefix, length=config.length, ext=ext, conn=conn)
+
+            if mode == 'file':
+                conn.put(sourcefile, filename)
+
         fullpath = os.path.join(config.local_directory, filename)
 
-        if mode == 'file':
-            conn.put(sourcefile, filename)
-        
         notify_user(config.url_template.format(filename))
 
     return fullpath, filename
@@ -107,13 +112,13 @@ def notify_user(url, image=None):
 
 
 def parse_text(args):
-        text = pyperclip.paste()
-        if re.match(r'(https?|s?ftp)://', text):
-            mirror_file(text)
-        elif os.path.isfile(text):
-            upload_local_file(text)
-        else:
-            upload_text(text)
+    text = pyperclip.paste()
+    if re.match(r'(https?|s?ftp)://', text):
+        mirror_file(text)
+    elif os.path.isfile(text):
+        upload_local_file(text)
+    else:
+        upload_text(text)
 
 
 def mirror_file(text):
@@ -136,14 +141,14 @@ def upload_text(text):
 
 if __name__ == '__main__':
     args = parse_arguments()
-    if args.mode == 'clipboard':
-        parse_text(pyperclip.paste())
-    elif args.mode == 'screenshot'
+    if args.mode == 'screenshot':
         take_screenshot()
+    elif args.mode == 'clipboard':
+        parse_text(pyperclip.paste())
     else:
         for file in args.files:
             upload_local_file(file)
-    
+
     """
     if config.uploader in ['ftp', 'sftp']:
         if args.files is not None:

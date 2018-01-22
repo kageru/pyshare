@@ -16,12 +16,8 @@ curl_command = None
 
 # This is where the screenshots are saved locally
 local_directory = '/home/kageru/pyshare/'
-
-# Use i3scrot for screen capture. Otherwise, escrotum will be used.
-# You might have to install the capture tool you want to use via your package manager.
-# i3scrot was much faster for me when working with multiple high-res displays.
-# If you do use it, you manually need to set its save directory to your local_directory (above) + 'tmp' in ~/.config/i3-scrot.conf
-use_i3scrot = False
+# If set to false, images will be deleted after uploading them
+keep_local_copies = True
 
 # Directory on the ftp server where you want the screenshots to be sent
 remote_directory = '/usr/share/nginx/html/pyshare/'
