@@ -52,6 +52,7 @@ def take_screenshot(edit=False) -> None:
     tempname = generate_filename(config.length, 'png')
     file = os.path.join(config.local_directory, tempname)
     call(['maim', '-sk', file])
+    Image.open(file).convert('RGB').save(file)
     if edit:
         call(['gimp', file])
     ftp_upload(ext='png', sourcefile=file, mode='screenshot')
@@ -91,7 +92,7 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
 
         fullpath = os.path.join(config.local_directory, filename)
 
-        notify_user(config.url_template.format(filename))
+        notify_user(config.url_template.format(filename), fullpath if mode=='screenshot' else None)
 
     return fullpath, filename
 
@@ -108,10 +109,10 @@ def notify_user(url, image=None):
         img.thumbnail((384, 384), Image.ANTIALIAS)
         thumbnail = os.path.join(config.local_directory, 'thumb.jpg')
         img.save(thumbnail)
-        call(['notify-send', '-a pyshare', url, f'-i {thumbnail}', '-t 3000'])
+        call(['notify-send', '-a', 'pyshare', url, '-i',  thumbnail, '-t', '3000'])
         os.remove(thumbnail)
     else:
-        call(['notify-send', '-a pyshare', url, '-t 3000'])
+        call(['notify-send', '-a', 'pyshare', url, '-t', '3000'])
 
 
 def parse_text(args):
