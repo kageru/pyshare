@@ -20,6 +20,7 @@ def parse_arguments():
     parser.add_argument('-m' '--mode', type=str, dest='mode', default=None,
                         help='Sets the input mode. Allowed values are "screenshot" and "clipboard". Implicit it file(s) are set.')
     parser.add_argument('-f', '--files', type=str, nargs='*', dest='files', help='List of files to be uploaded', default=None)
+    parser.add_argument('-e', '--edit', type=bool, dest='edit', default=False, help='Open the screenshot in gimp to edit it before uploading')
     return parser.parse_args()
 
 
@@ -47,10 +48,12 @@ def upload_local_file(path: str) -> str:
         return curl_upload(path)
 
 
-def take_screenshot() -> None:
+def take_screenshot(edit=False) -> None:
     tempname = generate_filename(config.length, 'png')
     file = os.path.join(config.local_directory, tempname)
     call(['maim', '-sk', file])
+    if edit:
+        call(['gimp', file])
     ftp_upload(ext='png', sourcefile=file, mode='screenshot')
     if not config.keep_local_copies:
         os.remove(file)
@@ -94,7 +97,7 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
 
 
 def curl_upload(filename):
-    return call(config.custom_curl_command)
+    return call(config.curl_command.format(filename))
 
 
 def notify_user(url, image=None):
@@ -147,7 +150,7 @@ if __name__ == '__main__':
         else:
             args.mode = 'screenshot'
     if args.mode == 'screenshot':
-        take_screenshot()
+        take_screenshot(args.edit)
     elif args.mode in ('clipboard', 'text', 'b'):
         parse_text(pyperclip.paste())
     else:
