@@ -67,9 +67,9 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
             'screenshot': 'png',
             'text': 'txt',
         }
-        if re.search('\.tar\.\w{1,4}]', sourcefile):
+        if re.search('\.tar\.\w{1,4}', sourcefile):
             # properly handle .tar.something files
-            ext = sourcefile.split('.')[-2:]
+            ext = '.'.join(sourcefile.split('.')[-2:])
         else:
             ext = exts.get(mode, mode not in exts and sourcefile.split('.')[-1])  # Only do the split if necessary
 
