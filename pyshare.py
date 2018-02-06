@@ -73,7 +73,7 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
         else:
             ext = exts.get(mode, mode not in exts and sourcefile.split('.')[-1])  # Only do the split if necessary
 
-    with Connection(config.sftp_address, username=config.username, password=config.password,
+    with Connection(config.sftp_address, username=config.username, password=config.password, port=config.sftp_port,
                     private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
         conn.chdir(config.remote_directory)
 
