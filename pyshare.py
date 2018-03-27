@@ -24,19 +24,19 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def generate_filename(length, ext, prefix=''):
-    return prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
+def generate_filename(length, ext):
+    return config.prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
 
 
-def find_valid_filename(prefix, length, ext, conn):
-    filename = generate_filename(prefix=prefix, length=length, ext=ext)
+def find_valid_filename(length, ext, conn):
+    filename = generate_filename(length=length, ext=ext)
     i = 0
     while conn.exists(filename):
-        filename = generate_filename(length=length, ext=ext, prefix=prefix)
+        filename = generate_filename(length=length, ext=ext)
         i += 1
         if i > 1000:
             # completely, definitely, totally justified recursion... yay?
-            return find_valid_filename(prefix, length + 1, ext, conn)
+            return find_valid_filename(length + 1, ext, conn)
     return filename
 
 
@@ -51,7 +51,7 @@ def upload_local_file(path: str) -> str:
 def take_screenshot(edit=False) -> None:
     tempname = generate_filename(config.length, 'png')
     file = os.path.join(config.local_directory, tempname)
-    call(['maim', '-sk', file])
+    call(['maim', '-suk', file])
     Image.open(file).convert('RGB').save(file)
     if edit:
         call(['gimp', file])
@@ -82,10 +82,10 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
         if mode == 'screenshot':
             os.chdir(config.local_directory)
             if conn.exists(cur_name):
-                filename = find_valid_filename(prefix=config.prefix, length=config.length, ext=ext, conn=conn)
+                filename = find_valid_filename(length=config.length, ext=ext, conn=conn)
             conn.put(filename, filename)
         else:
-            filename = find_valid_filename(prefix=config.prefix, length=config.length, ext=ext, conn=conn)
+            filename = find_valid_filename(length=config.length, ext=ext, conn=conn)
 
             if mode == 'file':
                 conn.put(sourcefile, filename)
