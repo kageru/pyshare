@@ -42,9 +42,6 @@ def get_date_folder():
 
 
 def find_valid_filename(length, ext, conn):
-    full_path = get_local_full_path()
-    if not os.path.exists(full_path):
-        os.makedirs(full_path)
     filename = os.path.join(get_date_folder(), generate_filename(length=length, ext=ext))
 
     i = 0
@@ -66,6 +63,9 @@ def upload_local_file(path: str, mode='file') -> str:
 
 
 def take_screenshot(edit=False) -> None:
+    full_path = get_local_full_path()
+    if not os.path.exists(full_path):
+        os.makedirs(full_path)
     tempname = generate_filename(config.length, 'png')
     file = os.path.join(get_local_full_path(), tempname)
     call(['maim', '-suk', file])
