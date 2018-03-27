@@ -3,7 +3,7 @@
 from string import ascii_letters, digits
 from argparse import ArgumentParser
 from pysftp import Connection
-from subprocess import call
+from subprocess import call, check_output
 from random import choices
 from PIL import Image
 import pyperclip
@@ -40,12 +40,12 @@ def find_valid_filename(length, ext, conn):
     return filename
 
 
-def upload_local_file(path: str) -> str:
+def upload_local_file(path: str, mode='file') -> str:
     if config.uploader in ['ftp', 'sftp']:
-        filename = ftp_upload(path, mode='file')[1]
+        filename = ftp_upload(path, mode=mode)[1]
         return config.url_template.format(filename)
     else:
-        return curl_upload(path)
+        notify_user(curl_upload(path))
 
 
 def take_screenshot(edit=False) -> None:
@@ -55,7 +55,7 @@ def take_screenshot(edit=False) -> None:
     Image.open(file).convert('RGB').save(file)
     if edit:
         call(['gimp', file])
-    ftp_upload(ext='png', sourcefile=file, mode='screenshot')
+    upload_local_file(file, mode='screenshot')
     if not config.keep_local_copies:
         os.remove(file)
 
@@ -98,7 +98,7 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
 
 
 def curl_upload(filename):
-    return call(config.curl_command.format(filename))
+    return check_output(config.curl_command.format(filename), shell=True).decode()[:-1]
 
 
 def notify_user(url, image=None):
