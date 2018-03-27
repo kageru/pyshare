@@ -8,7 +8,7 @@ from random import choices
 from datetime import date
 from PIL import Image
 import pyperclip
-import config2 as config
+import config
 import sys
 import os
 import re
