@@ -5,9 +5,10 @@ from argparse import ArgumentParser
 from pysftp import Connection
 from subprocess import call, check_output
 from random import choices
+from datetime import date
 from PIL import Image
 import pyperclip
-import config
+import config2 as config
 import sys
 import os
 import re
@@ -18,21 +19,37 @@ character_pool = ascii_letters + digits
 def parse_arguments():
     parser = ArgumentParser()
     parser.add_argument('-m' '--mode', type=str, dest='mode', default=None,
-                        help='Sets the input mode. Allowed values are "screenshot" and "clipboard". Implicit it file(s) are set.')
+                        help='Sets the input mode. Allowed values are "screenshot" and "clipboard". Implicit it if file(s) are set.')
     parser.add_argument('-f', '--files', type=str, nargs='*', dest='files', help='List of files to be uploaded', default=None)
     parser.add_argument('-e', '--edit', type=bool, dest='edit', default=False, help='Open the screenshot in gimp to edit it before uploading')
     return parser.parse_args()
 
 
 def generate_filename(length, ext):
-    return config.prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
+    filename = config.prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
+    return filename
+
+
+def get_local_full_path():
+    if config.local_directory_nesting:
+        folder = get_date_folder()
+        return os.path.join(config.local_directory, folder)
+    return config.local_directory
+
+
+def get_date_folder():
+    return date.today().strftime(config.local_directory_nesting)
 
 
 def find_valid_filename(length, ext, conn):
-    filename = generate_filename(length=length, ext=ext)
+    full_path = get_local_full_path()
+    if not os.path.exists(full_path):
+        os.makedirs(full_path)
+    filename = os.path.join(get_date_folder(), generate_filename(length=length, ext=ext))
+
     i = 0
     while conn.exists(filename):
-        filename = generate_filename(length=length, ext=ext)
+        filename = os.path.join(get_date_folder(), generate_filename(length=length, ext=ext))
         i += 1
         if i > 1000:
             # completely, definitely, totally justified recursion... yay?
@@ -50,7 +67,7 @@ def upload_local_file(path: str, mode='file') -> str:
 
 def take_screenshot(edit=False) -> None:
     tempname = generate_filename(config.length, 'png')
-    file = os.path.join(config.local_directory, tempname)
+    file = os.path.join(get_local_full_path(), tempname)
     call(['maim', '-suk', file])
     Image.open(file).convert('RGB').save(file)
     if edit:
@@ -61,6 +78,7 @@ def take_screenshot(edit=False) -> None:
 
 
 def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
+    "This method just keeps getting worse, but I’m too afraid to actually refactor it"
     if ext is None:
         # TODO files without extension
         exts = {
@@ -75,12 +93,16 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
 
     with Connection(config.sftp_address, username=config.username, password=config.password, port=config.sftp_port,
                     private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
-        conn.chdir(config.remote_directory)
+
+        full_remote_dir = os.path.join(config.remote_directory, get_date_folder())
+        if not conn.exists(full_remote_dir):
+            conn.makedirs(full_remote_dir)
+        conn.chdir(full_remote_dir)
 
         cur_name = sourcefile.split('/')[-1]
         filename = cur_name
         if mode == 'screenshot':
-            os.chdir(config.local_directory)
+            os.chdir(get_local_full_path())
             if conn.exists(cur_name):
                 filename = find_valid_filename(length=config.length, ext=ext, conn=conn)
             conn.put(filename, filename)
@@ -90,9 +112,10 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
             if mode == 'file':
                 conn.put(sourcefile, filename)
 
-        fullpath = os.path.join(config.local_directory, filename)
+        fullpath = os.path.join(get_local_full_path(), filename)
 
-        notify_user(config.url_template.format(filename), fullpath if mode=='screenshot' else None)
+        url = config.url_template.format(os.path.join(get_date_folder(), filename))
+        notify_user(url, fullpath if mode=='screenshot' else None)
 
     return fullpath, filename
 
@@ -104,7 +127,7 @@ def curl_upload(filename):
 def notify_user(url, image=None):
     print(url)
     pyperclip.copy(url)
-    if image:
+    if config.enable_thumbnails and image:
         img = Image.open(image)
         img.thumbnail((384, 384), Image.ANTIALIAS)
         thumbnail = os.path.join(config.local_directory, 'thumb.jpg')
