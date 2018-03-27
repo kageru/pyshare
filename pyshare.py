@@ -94,7 +94,10 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
     with Connection(config.sftp_address, username=config.username, password=config.password, port=config.sftp_port,
                     private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
 
-        full_remote_dir = os.path.join(config.remote_directory, get_date_folder())
+        if config.preserve_folders_on_remote:
+            full_remote_dir = os.path.join(config.remote_directory, get_date_folder())
+        else:
+            full_remote_dir = config.remote_directory
         if not conn.exists(full_remote_dir):
             conn.makedirs(full_remote_dir)
         conn.chdir(full_remote_dir)
@@ -114,7 +117,10 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
 
         fullpath = os.path.join(get_local_full_path(), filename)
 
-        url = config.url_template.format(os.path.join(get_date_folder(), filename))
+        if config.preserve_folders_on_remote:
+            url = config.url_template.format(os.path.join(get_date_folder(), filename))
+        else:
+            url = config.url_template.format(filename)
         notify_user(url, fullpath if mode=='screenshot' else None)
 
     return fullpath, filename
