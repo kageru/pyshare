@@ -25,30 +25,31 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def generate_filename(length, ext):
+def generate_filename(length: int, ext: str) -> str:
     filename = config.prefix + ''.join(choices(character_pool, k=length)) + '.' + ext
     return filename
 
 
-def get_local_full_path():
+def get_local_full_path() -> str:
     if config.local_directory_nesting:
         folder = get_date_folder()
         return os.path.join(config.local_directory, folder)
     return config.local_directory
 
 
-def get_date_folder():
+def get_date_folder() -> str:
     return date.today().strftime(config.local_directory_nesting)
 
 
-def upload_local_file(path: str) -> str:
+def upload_local_file(path: str) -> None:
     if config.uploader in ['ftp', 'sftp']:
         filename = ftp_upload(path)
         if config.preserve_folders_on_remote:
             filename = os.path.join(get_date_folder(), filename)
-        return config.url_template.format(filename)
+        url = config.url_template.format(filename)
     else:
-        return curl_upload(path)
+        url = curl_upload(path)
+    notify_user(url)
 
 
 def take_screenshot(edit=False) -> None:
@@ -61,8 +62,7 @@ def take_screenshot(edit=False) -> None:
     Image.open(file).convert('RGB').save(file)
     if edit:
         call(['gimp', file])
-    url = upload_local_file(file)
-    notify_user(url)
+    upload_local_file(file)
     if not config.keep_local_copies:
         os.remove(file)
 
@@ -108,11 +108,11 @@ def ftp_upload(sourcefile: str) -> str:
         return dest_name
 
 
-def curl_upload(filename):
+def curl_upload(filename: str) -> str:
     return check_output(config.curl_command.format(filename), shell=True).decode()[:-1]
 
 
-def notify_user(url, image=None):
+def notify_user(url:str, image=None) -> None:
     print(url)
     pyperclip.copy(url)
     if config.enable_thumbnails and image:
@@ -126,7 +126,7 @@ def notify_user(url, image=None):
         call(['notify-send', '-a', 'pyshare', url, '-t', '3000'])
 
 
-def parse_text(args):
+def parse_text():
     text = pyperclip.paste()
     if re.match(r'(https?|s?ftp)://', text):
         mirror_file(text)
@@ -136,13 +136,12 @@ def parse_text(args):
         upload_text(text)
 
 
-def mirror_file(text):
+def mirror_file(text: str):
     os.chdir(config.local_directory)
     call(['wget', text])
     filename = text.rsplit('/', 1)[1]
     url = upload_local_file(os.path.join(config.local_directory, filename))
     os.remove(os.path.join(config.local_directory, filename))
-    notify_user(url)
 
 
 def upload_text(text):
@@ -151,7 +150,6 @@ def upload_text(text):
         file.write(text)
     url = upload_local_file(os.path.join(config.local_directory, filename))
     os.remove(os.path.join(config.local_directory, filename))
-    notify_user(url)
 
 
 if __name__ == '__main__':
