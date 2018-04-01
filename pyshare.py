@@ -42,21 +42,21 @@ def get_date_folder():
 
 
 def find_valid_filename(length, ext, conn):
-    filename = os.path.join(get_date_folder(), generate_filename(length=length, ext=ext))
+    filename = generate_filename(length=length, ext=ext)
 
     i = 0
     while conn.exists(filename):
         filename = os.path.join(get_date_folder(), generate_filename(length=length, ext=ext))
         i += 1
         if i > 1000:
-            # completely, definitely, totally justified recursion... yay?
-            return find_valid_filename(length + 1, ext, conn)
+            length += 1
+            i = 0
     return filename
 
 
 def upload_local_file(path: str, mode='file') -> str:
     if config.uploader in ['ftp', 'sftp']:
-        filename = ftp_upload(path, mode=mode)[1]
+        filename = ftp_upload(path, mode=mode)
         return config.url_template.format(filename)
     else:
         notify_user(curl_upload(path))
@@ -77,6 +77,49 @@ def take_screenshot(edit=False) -> None:
         os.remove(file)
 
 
+
+def get_extension(filename: str) -> str:
+    """
+    Returns the extension of a file/full path as a string.
+    Emtpy if the file has no extension.
+    .tar.xx archives are handled accordingly.
+    """
+    filename = os.path.basename(filename)
+    if re.search('\.tar\.\w{1,4}', filename):
+        num_exts = 2
+    else:
+        num_exts = 1
+    extension = '.'.join(filename.split('.')[-num_exts:])
+    return extension
+
+
+def ftp_upload(sourcefile: str) -> str:
+
+
+    def prepare_remote_folder(conn) -> None:
+        "Create the necessary folder(s) on the remote server and change the directory accordingly"
+        if config.preserve_folders_on_remote:
+            full_remote_dir = os.path.join(config.remote_directory, get_date_folder())
+        else:
+            full_remote_dir = config.remote_directory
+        if not conn.exists(full_remote_dir):
+            conn.makedirs(full_remote_dir)
+        conn.chdir(full_remote_dir)
+
+
+    extension = get_extension(sourcefile)
+    with Connection(config.sftp_address, username=config.username, password=config.password, port=config.sftp_port,
+                    private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
+        prepare_remote_folder(conn)
+        extension = get_extension(sourcefile)
+        dest_name = generate_filename(config.length, extension)
+        while conn.exists(dest_name):
+            dest_name = generate_filename(config.length, extension)
+        conn.put(sourcefile, dest_name)
+        return dest_name
+
+
+"""
 def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
     "This method just keeps getting worse, but I’m too afraid to actually refactor it"
     if ext is None:
@@ -85,9 +128,7 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
             'screenshot': 'png',
             'text': 'txt',
         }
-        if re.search('\.tar\.\w{1,4}', sourcefile):
             # properly handle .tar.something files
-            ext = '.'.join(sourcefile.split('.')[-2:])
         else:
             ext = exts.get(mode, mode not in exts and sourcefile.split('.')[-1])  # Only do the split if necessary
 
@@ -124,6 +165,7 @@ def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
         notify_user(url, fullpath if mode=='screenshot' else None)
 
     return fullpath, filename
+"""
 
 
 def curl_upload(filename):
@@ -187,34 +229,3 @@ if __name__ == '__main__':
         for file in args.files:
             upload_local_file(file)
 
-    """
-    if config.uploader in ['ftp', 'sftp']:
-        if args.files is not None:
-            for file in args.files:
-                upload_local_file(file) 
-        elif args.mode == 'text':
-            parse_clipboard(args)
-        else:
-            take_screenshot()
-                  
-    elif args.files is not None:
-       
-    if config.uploader in ['ftp', 'sftp']:
-        if mode != 'screenshot' and '.' in file:
-            ext = '.' + file.rsplit('.', 1)[1]
-        # TODO: mode file for FTP
-        fullpath, filename = ftp_upload(mode, ext)
-    elif config.uploader == 'curl':
-        if mode=='screenshot':
-            filename = generate_filename(length=config.length, ext='.png')
-            fullpath = os.path.join(config.local_directory, filename)
-            take_screenshot(fullpath)
-        else:
-            fullpath = file
-        curl_upload(fullpath)
-    else:
-        print('Unknown mode')
-        sys.exit(-1)
-    url = config.url_template.format(filename)
-    notify_user(url)
-    """
