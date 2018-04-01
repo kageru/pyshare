@@ -41,25 +41,14 @@ def get_date_folder():
     return date.today().strftime(config.local_directory_nesting)
 
 
-def find_valid_filename(length, ext, conn):
-    filename = generate_filename(length=length, ext=ext)
-
-    i = 0
-    while conn.exists(filename):
-        filename = os.path.join(get_date_folder(), generate_filename(length=length, ext=ext))
-        i += 1
-        if i > 1000:
-            length += 1
-            i = 0
-    return filename
-
-
-def upload_local_file(path: str, mode='file') -> str:
+def upload_local_file(path: str) -> str:
     if config.uploader in ['ftp', 'sftp']:
-        filename = ftp_upload(path, mode=mode)
+        filename = ftp_upload(path)
+        if config.preserve_folders_on_remote:
+            filename = os.path.join(get_date_folder(), filename)
         return config.url_template.format(filename)
     else:
-        notify_user(curl_upload(path))
+        return curl_upload(path)
 
 
 def take_screenshot(edit=False) -> None:
@@ -72,10 +61,10 @@ def take_screenshot(edit=False) -> None:
     Image.open(file).convert('RGB').save(file)
     if edit:
         call(['gimp', file])
-    upload_local_file(file, mode='screenshot')
+    url = upload_local_file(file)
+    notify_user(url)
     if not config.keep_local_copies:
         os.remove(file)
-
 
 
 def get_extension(filename: str) -> str:
@@ -117,55 +106,6 @@ def ftp_upload(sourcefile: str) -> str:
             dest_name = generate_filename(config.length, extension)
         conn.put(sourcefile, dest_name)
         return dest_name
-
-
-"""
-def ftp_upload(sourcefile, *, mode=None, ext=None) -> tuple:
-    "This method just keeps getting worse, but I’m too afraid to actually refactor it"
-    if ext is None:
-        # TODO files without extension
-        exts = {
-            'screenshot': 'png',
-            'text': 'txt',
-        }
-            # properly handle .tar.something files
-        else:
-            ext = exts.get(mode, mode not in exts and sourcefile.split('.')[-1])  # Only do the split if necessary
-
-    with Connection(config.sftp_address, username=config.username, password=config.password, port=config.sftp_port,
-                    private_key=config.private_key, private_key_pass=config.private_key_pass) as conn:
-
-        if config.preserve_folders_on_remote:
-            full_remote_dir = os.path.join(config.remote_directory, get_date_folder())
-        else:
-            full_remote_dir = config.remote_directory
-        if not conn.exists(full_remote_dir):
-            conn.makedirs(full_remote_dir)
-        conn.chdir(full_remote_dir)
-
-        cur_name = sourcefile.split('/')[-1]
-        filename = cur_name
-        if mode == 'screenshot':
-            os.chdir(get_local_full_path())
-            if conn.exists(cur_name):
-                filename = find_valid_filename(length=config.length, ext=ext, conn=conn)
-            conn.put(filename, filename)
-        else:
-            filename = find_valid_filename(length=config.length, ext=ext, conn=conn)
-
-            if mode == 'file':
-                conn.put(sourcefile, filename)
-
-        fullpath = os.path.join(get_local_full_path(), filename)
-
-        if config.preserve_folders_on_remote:
-            url = config.url_template.format(os.path.join(get_date_folder(), filename))
-        else:
-            url = config.url_template.format(filename)
-        notify_user(url, fullpath if mode=='screenshot' else None)
-
-    return fullpath, filename
-"""
 
 
 def curl_upload(filename):
