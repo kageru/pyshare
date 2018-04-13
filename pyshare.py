@@ -4,11 +4,12 @@ from string import ascii_letters, digits
 from argparse import ArgumentParser
 from pysftp import Connection
 from subprocess import call, check_output
+from collections import namedtuple
 from random import choices
 from datetime import date
 from PIL import Image
 import pyperclip
-import config
+import config2 as config
 import sys
 import os
 import re
@@ -52,12 +53,17 @@ def upload_local_file(path: str) -> None:
     notify_user(url)
 
 
-def take_screenshot(edit=False) -> None:
+def prepare_file(ext: str) -> str:
+    "Generate a file name according to the config and create folder structure if necessary"
     full_path = get_local_full_path()
     if not os.path.exists(full_path):
         os.makedirs(full_path)
-    tempname = generate_filename(config.length, 'png')
-    file = os.path.join(get_local_full_path(), tempname)
+    tempname = generate_filename(config.length, ext)
+    return os.path.join(get_local_full_path(), tempname)
+
+
+def take_screenshot(edit=False) -> None:
+    file = prepare_file('png')
     call(['maim', '-suk', file])
     Image.open(file).convert('RGB').save(file)
     if edit:
@@ -67,18 +73,25 @@ def take_screenshot(edit=False) -> None:
         os.remove(file)
 
 
-def get_user_selection() -> namedtuple:
+def get_selection_rectangle() -> namedtuple:
+    # TODO: let user cancel selection
     raw_coords = check_output(['slop', '-f', '%x,%y,%w,%h']).decode()
     x, y, w, h = [int(x) for x in raw_coords.split(',')]
-    Point = namedtuple('Point', ['x', 'y'])
-    Rectangle = namedtuple('Rectangle', ['p1', 'p2'])
-    top_left = Point(x, y)
-    bottom_right = Point(x+w, y+h)
-    return Rectangle(top_left, bottom_right)
+    Rectangle = namedtuple('Rectangle', ['x', 'y', 'w', 'h'])
+    return Rectangle(x, y, w, h)
 
 
 def record_screen() -> None:
-    pass
+    # ffmpeg -f x11grab -s "$W"x"$H" -i :0.0+$X,$Y ~/myfile.webm
+    # TODO: show rectangle during recording
+    # also TODO: find a way to end the capture
+    file = prepare_file('webm')
+    sel = get_selection_rectangle()
+    call(['ffmpeg', '-f', 'x11grab', '-i', f':0.0+{sel.x},{sel.y}', '-s', f'{sel.w}x{sel.h}', 'file'])
+    upload_local_file(file)
+    if not config.keep_local_copies:
+        os.remove(file)
+    
 
 def get_extension(filename: str) -> str:
     """
