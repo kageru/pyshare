@@ -67,6 +67,19 @@ def take_screenshot(edit=False) -> None:
         os.remove(file)
 
 
+def get_user_selection() -> namedtuple:
+    raw_coords = check_output(['slop', '-f', '%x,%y,%w,%h']).decode()
+    x, y, w, h = [int(x) for x in raw_coords.split(',')]
+    Point = namedtuple('Point', ['x', 'y'])
+    Rectangle = namedtuple('Rectangle', ['p1', 'p2'])
+    top_left = Point(x, y)
+    bottom_right = Point(x+w, y+h)
+    return Rectangle(top_left, bottom_right)
+
+
+def record_screen() -> None:
+    pass
+
 def get_extension(filename: str) -> str:
     """
     Returns the extension of a file/full path as a string.
