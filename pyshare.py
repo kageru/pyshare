@@ -126,8 +126,7 @@ def notify_user(url:str, image=None) -> None:
         call(['notify-send', '-a', 'pyshare', url, '-t', '3000'])
 
 
-def parse_text():
-    text = pyperclip.paste()
+def parse_text(text):
     if re.match(r'(https?|s?ftp)://', text):
         mirror_file(text)
     elif os.path.isfile(text):
